@@ -311,21 +311,28 @@ const App = () => {
       </Modal>
 
       <Modal
-        visible={showCalendar}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={handleCloseCalendarModal}>
-        <TouchableWithoutFeedback onPress={handleCloseCalendarModal}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Calendar
-                onDayPress={handleDayPress}
-                markedDates={{ [selectedDate]: { selected: true, selectedColor: 'blue' } }}
-              />
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+  visible={showCalendar}
+  animationType="slide"
+  transparent={true}
+  onRequestClose={handleCloseCalendarModal}
+>
+  <TouchableWithoutFeedback onPress={handleCloseCalendarModal}>
+    <View style={styles.modalContainer}>
+      <View style={styles.modalContent}>
+        <Calendar
+          current={selectedDate} // 현재 선택된 날짜를 표시하기 위해 current 속성 사용
+          onDayPress={(day) => setSelectedDate(day.dateString)} // 날짜를 선택했을 때의 동작 정의
+          markedDates={{ [selectedDate]: { selected: true, selectedColor: 'blue' } }}
+          // 월 변경 화살표와 달력 숫자에 대한 터치 이벤트 처리
+          onTouchPrev={() => { }}
+          onTouchNext={() => { }}
+          onMonthChange={() => { }}
+        />
+      </View>
+    </View>
+  </TouchableWithoutFeedback>
+</Modal>
+
 
       <TouchableOpacity
         style={styles.menuButton}
