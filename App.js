@@ -6,33 +6,34 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  Modal, // Modal 추가
-  Alert, // Alert를 추가합니다.
-  TouchableWithoutFeedback, // TouchableWithoutFeedback 추가
+  Modal,
+  Alert,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { Calendar } from 'react-native-calendars';
 
 const App = () => {
   const [textInput, setTextInput] = useState('');
   const [searchText, setSearchText] = useState('');
   const [todos, setTodos] = useState([]);
-  const [completedVisible, setCompletedVisible] = useState(false); // 완료된 일정 페이지 가시성 상태
-  const [completedItems, setCompletedItems] = useState([]); // 완료된 일정 목록
-  const [showMenuModal, setShowMenuModal] = useState(false); // 메뉴 모달 창 가시성 상태
-  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false); // 전체 삭제 모달 창 상태
-  const [noTodosMessage, setNoTodosMessage] = useState(true); // 할 일이 없는 경우 메시지 표시 여부
+  const [completedVisible, setCompletedVisible] = useState(false);
+  const [completedItems, setCompletedItems] = useState([]);
+  const [showMenuModal, setShowMenuModal] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [noTodosMessage, setNoTodosMessage] = useState(true);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
 
-  // AsyncStorage에서 할 일 목록을 불러와서 설정
   useEffect(() => {
     const loadTodos = async () => {
       try {
         const storedTodos = await AsyncStorage.getItem('@todos');
         if (storedTodos !== null) {
           setTodos(JSON.parse(storedTodos));
-          setNoTodosMessage(false); // 할 일이 있을 때 메시지 숨기기
+          setNoTodosMessage(false);
         } else {
-          setNoTodosMessage(true); // 할 일이 없을 때 메시지 표시
+          setNoTodosMessage(true);
         }
       } catch (error) {
         console.error('Failed to load todos from AsyncStorage', error);
@@ -41,7 +42,6 @@ const App = () => {
     loadTodos();
   }, []);
 
-  // AsyncStorage에서 완료된 일정 목록을 불러와서 설정
   const loadCompletedItems = async () => {
     try {
       const storedCompletedItems = await AsyncStorage.getItem('@completedItems');
@@ -53,7 +53,6 @@ const App = () => {
     }
   };
 
-  // 완료된 일정 목록 불러오기
   useEffect(() => {
     if (completedVisible) {
       loadCompletedItems();
@@ -87,34 +86,30 @@ const App = () => {
     setTodos(updatedTodos);
     saveTodos(updatedTodos);
     setTextInput('');
-    setNoTodosMessage(false); // 할 일이 추가되면 메시지 숨기기
+    setNoTodosMessage(false);
   };
   
   const handleDeleteTodo = (id) => {
     const updatedTodos = todos.filter((todo) => todo.id !== id);
-    // 완료 시간 추가
-  const completedTimestamp = new Date().toLocaleString();
-  const updatedCompletedItems = [...completedItems, { ...todoToDelete, completedTimestamp }];
-  
-    setTodos(updatedTodos);
-    saveTodos(updatedTodos); // 할 일 목록을 AsyncStorage에 저장하고 데이터 가져오기
-    // 해당 항목을 완료된 일정 페이지로 이동
     const todoToDelete = todos.find((todo) => todo.id === id);
-    setCompletedItems([...completedItems, todoToDelete]);
-    saveCompletedItems([...completedItems, todoToDelete]); // 완료된 일정 목록을 AsyncStorage에 저장
+    const completedTimestamp = new Date().toLocaleString();
+    const updatedCompletedItems = [...completedItems, { ...todoToDelete, completedTimestamp }];
+    setTodos(updatedTodos);
+    setCompletedItems(updatedCompletedItems);
+    saveTodos(updatedTodos);
+    saveCompletedItems(updatedCompletedItems);
   };
 
   const handleDeleteAllTodos = () => {
     setTodos([]);
-    saveTodos([]); // 빈 할 일 목록을 AsyncStorage에 저장하고 데이터 가져오기
+    saveTodos([]);
   };
   
   const handleDeleteCompleted = (id) => {
     const updatedCompletedItems = completedItems.filter((item) => item.id !== id);
     setCompletedItems(updatedCompletedItems);
-    saveCompletedItems(updatedCompletedItems); // 완료된 일정 목록을 AsyncStorage에 저장하고 데이터 가져오기
+    saveCompletedItems(updatedCompletedItems);
   };
-
 
   const renderCompletedItem = ({ item }) => (
     <View style={styles.todoItem}>
@@ -127,7 +122,6 @@ const App = () => {
       </TouchableOpacity>
     </View>
   );
-  
   
   const renderItem = ({ item }) => (
     <View style={styles.todoItem}>
@@ -142,94 +136,103 @@ const App = () => {
   );
 
   const renderSeparator = () => <View style={styles.separator} />;
-  
-  // 전체 삭제 모달 창 띄우기
-  const handleShowDeleteAllModal = () => {
-    setShowDeleteAllModal(true);
-  };
 
-  // 전체 삭제 모달 창 닫기
   const handleCloseDeleteAllModal = () => {
     setShowDeleteAllModal(false);
   };
 
-  // 전체 삭제 확인 버튼 처리
   const handleConfirmDeleteAll = () => {
     setCompletedItems([]);
-    saveCompletedItems([]); // 빈 완료된 일정 목록을 AsyncStorage에 저장하고 데이터 가져오기
+    saveCompletedItems([]);
     setShowDeleteAllModal(false);
   };
 
-  // 전체 삭제 함수
-const handleDeleteAllCompleted = () => {
-  // 경고창 표시
-  Alert.alert(
-    '전체 삭제',
-    '완료된 일정을 모두 삭제하시겠습니까?',
-    [
-      { text: '아니오', style: 'cancel' },
-      { text: '예', onPress: () => confirmDeleteAllCompleted() },
-    ],
-    { cancelable: false }
-  );
-};
+  const handleDeleteAllCompleted = () => {
+    Alert.alert(
+      '전체 삭제',
+      '완료된 일정을 모두 삭제하시겠습니까?',
+      [
+        { text: '아니오', style: 'cancel' },
+        { text: '예', onPress: () => confirmDeleteAllCompleted() },
+      ],
+      { cancelable: false }
+    );
+  };
 
-// 실제로 전체 삭제를 수행하는 함수
-const confirmDeleteAllCompleted = () => {
-  setCompletedItems([]);
-  saveCompletedItems([]); // 빈 완료된 일정 목록을 AsyncStorage에 저장하고 데이터 가져오기
-};
+  const confirmDeleteAllCompleted = () => {
+    setCompletedItems([]);
+    saveCompletedItems([]);
+  };
 
-return (
-  <View style={styles.container}>
-    {/* 해야 할 것들 페이지 */}
-    {!completedVisible && (
-      <>
-        <View style={styles.header}>
-          <Text style={styles.title}>할 일들</Text>
-          <TouchableOpacity
-            style={styles.searchButton}
-            onPress={() => setSearchText('')}>
-          </TouchableOpacity>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="검색"
-            value={searchText}
-            onChangeText={(text) => setSearchText(text)}
-          />
-        </View>
+  const handleShowCalendarModal = () => {
+    setShowCalendar(true);
+    setShowMenuModal(false);
+  };
 
-        <View style={styles.addSection}>
-          <TextInput
-            style={styles.input}
-            placeholder="새로운 할 일을 입력하세요"
-            value={textInput}
-            onChangeText={(text) => setTextInput(text)}
-          />
-          <TouchableOpacity style={styles.addButton} onPress={handleAddTodo}>
-            <Text style={styles.addButtonText}>추가</Text>
-          </TouchableOpacity>
-        </View>
+  const handleCloseCalendarModal = () => {
+    setShowCalendar(false);
+  };
+  
+  const handleDayPress = (day) => {
+    setSelectedDate(day.dateString);
+    handleCloseCalendarModal();
+  };
 
-        {/* 일정이 없는 경우에만 메시지 표시 */}
-        {noTodosMessage && (
-          <Text style={styles.noTodosMessage}>할 일이 없습니다. 새로운 일정을 추가하세요!</Text>
-        )}
+  const handleModalToggle = () => {
+    setShowModal(!showModal);
+  };
 
-        {/* 일정 목록 */}
-        <FlatList
-          data={todos.filter((todo) =>
-            todo.title.toLowerCase().includes(searchText.toLowerCase())
+  const handleCloseModal = () => {
+    setShowModal(false);
+  };
+
+  return (
+    <View style={styles.container}>
+      {!completedVisible && (
+        <>
+          <View style={styles.header}>
+            <Text style={styles.title}>할 일들</Text>
+            <TouchableOpacity
+              style={styles.searchButton}
+              onPress={() => setSearchText('')}>
+            </TouchableOpacity>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="검색"
+              value={searchText}
+              onChangeText={(text) => setSearchText(text)}
+            />
+          </View>
+
+          <View style={styles.addSection}>
+            <TextInput
+              style={styles.input}
+              placeholder="새로운 할 일을 입력하세요"
+              value={textInput}
+              onChangeText={(text) => setTextInput(text)}
+            />
+            <TouchableOpacity style={styles.addButton} onPress={handleAddTodo}>
+              <Text style={styles.addButtonText}>추가</Text>
+            </TouchableOpacity>
+          </View>
+
+          {noTodosMessage && (
+            <Text style={styles.noTodosMessage}>할 일이 없습니다. 새로운 일정을 추가하세요!</Text>
           )}
-          renderItem={renderItem}
-          keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()} 
-          ItemSeparatorComponent={renderSeparator}
-          ListFooterComponent={renderSeparator}
-        />
-      </>
-    )}
 
-<Modal
+          <FlatList
+            data={todos.filter((todo) =>
+              todo.title.toLowerCase().includes(searchText.toLowerCase())
+            )}
+            renderItem={renderItem}
+            keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()} 
+            ItemSeparatorComponent={renderSeparator}
+            ListFooterComponent={renderSeparator}
+          />
+        </>
+      )}
+
+      <Modal
         visible={showDeleteAllModal}
         animationType="slide"
         transparent={true}
@@ -253,11 +256,9 @@ return (
         </View>
       </Modal>
 
-      {/* 완료된 일정 페이지 */}
       {completedVisible && (
         <View style={styles.completedPage}>
           <Text style={styles.title}>완료된 일정</Text>
-          {/* 완료된 일정 목록 표시 */}
           <FlatList
             data={completedItems.filter((item) =>
               item.title.toLowerCase().includes(searchText.toLowerCase())
@@ -267,7 +268,6 @@ return (
             ItemSeparatorComponent={renderSeparator}
             ListFooterComponent={renderSeparator}
           />
-          {/* 전체 삭제 기능 구현 */}
           <TouchableOpacity
             style={styles.deleteAllButton}
             onPress={handleDeleteAllCompleted}>
@@ -275,39 +275,58 @@ return (
           </TouchableOpacity>
         </View>
       )}
-  
-      {/* 모달 창 */}
+
       <Modal
-  visible={showMenuModal}
-  animationType="slide"
-  transparent={true}
-  onRequestClose={() => setShowMenuModal(false)}
->
-  <View style={styles.modalContainer}>
-    <View style={styles.modalContent}>
-      <TouchableOpacity
-        style={styles.menuOption}
-        onPress={() => {
-          setCompletedVisible(false);
-          setShowMenuModal(false);
-        }}
-      >
-        <Text style={styles.menuOptionText}>할 일들 보기</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.menuOption}
-        onPress={() => {
-          setCompletedVisible(true);
-          setShowMenuModal(false);
-        }}
-      >
-        <Text style={styles.menuOptionText}>완료된 일정 보기</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-</Modal>
-  
-      {/* 메뉴 버튼 */}
+        visible={showMenuModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowMenuModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowMenuModal(false)}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <TouchableOpacity
+                style={styles.menuOption}
+                onPress={() => {
+                  setCompletedVisible(false);
+                  setShowMenuModal(false);
+                }}>
+                <Text style={styles.menuOptionText}>할 일들</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuOption}
+                onPress={() => {
+                  setCompletedVisible(true);
+                  setShowMenuModal(false);
+                }}>
+                <Text style={styles.menuOptionText}>완료된 일정</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuOption}
+                onPress={handleShowCalendarModal}>
+                <Text style={styles.menuOptionText}>캘린더</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      <Modal
+        visible={showCalendar}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCloseCalendarModal}>
+        <TouchableWithoutFeedback onPress={handleCloseCalendarModal}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Calendar
+                onDayPress={handleDayPress}
+                markedDates={{ [selectedDate]: { selected: true, selectedColor: 'blue' } }}
+              />
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
       <TouchableOpacity
         style={styles.menuButton}
         onPress={() => setShowMenuModal(true)}>
@@ -400,7 +419,6 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     backgroundColor: '#ccc',
-    //marginBottom:5,
     marginTop:7,
   },
   menuButton: {
@@ -430,7 +448,6 @@ const styles = StyleSheet.create({
     padding: 5,
     backgroundColor: '#fff',
   },
-  // 모달 관련 스타일
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
